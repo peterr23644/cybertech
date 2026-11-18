@@ -1,18 +1,23 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { ClerkProvider } from '@clerk/expo';
+import { tokenCache } from '@clerk/expo/token-cache';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+if (!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+  throw new Error('Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in your .env file');
+}
+
+const publishableKey: string = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </ClerkProvider>
   );
 }
