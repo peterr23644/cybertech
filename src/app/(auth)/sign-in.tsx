@@ -1,37 +1,91 @@
-import { useSSO } from '@clerk/expo';
-import { useCallback } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
+import { useSignIn } from '@clerk/expo';
+import { Link } from 'expo-router';
+import { useCallback, useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { Colors, FontSizes, Radius, Spacing } from '@/theme';
-
-WebBrowser.maybeCompleteAuthSession();
+import { getClerkErrorMessage } from '@/utils/clerkError';
 
 export default function SignInScreen() {
-  const { startSSOFlow } = useSSO();
+  const { signIn, fetchStatus } = useSignIn();
+  const submitting = fetchStatus === 'fetching';
 
-  const handleGoogleSignIn = useCallback(async () => {
-    try {
-      const { createdSessionId, setActive } = await startSSOFlow({ strategy: 'oauth_google' });
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
-      }
-    } catch (error) {
-      console.error('Google sign-in failed', error);
+  const [emailAddress, setEmailAddress] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSignIn = useCallback(async () => {
+    if (submitting) return;
+    setError('');
+
+    const { error: signInError } = await signIn.password({
+      emailAddress: emailAddress.trim(),
+      password,
+    });
+
+    if (signInError) {
+      console.error('Sign in failed', signInError.code);
+      setError(getClerkErrorMessage(signInError, 'Could not sign in. Please check your email and password.'));
+      return;
     }
-  }, [startSSOFlow]);
+
+    if (signIn.status === 'complete') {
+      await signIn.finalize();
+    } else {
+      setError('Could not sign in. Please check your details and try again.');
+    }
+  }, [signIn, emailAddress, password, submitting]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Sign in</Text>
-      <Text style={styles.subtitle}>Sign in with Google to get started.</Text>
+      <Text style={styles.subtitle}>Welcome back! Enter your details to continue.</Text>
+
+      <TextInput
+        accessibilityLabel="Email address"
+        style={styles.input}
+        placeholder="Email address"
+        placeholderTextColor={Colors.text}
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        value={emailAddress}
+        onChangeText={setEmailAddress}
+      />
+      <TextInput
+        accessibilityLabel="Password"
+        style={styles.input}
+        placeholder="Password"
+        placeholderTextColor={Colors.text}
+        autoCapitalize="none"
+        autoComplete="password"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
       <Pressable
-        accessibilityLabel="Sign in with Google"
+        accessibilityLabel="Sign in"
         accessibilityRole="button"
         style={styles.button}
-        onPress={handleGoogleSignIn}>
-        <Text style={styles.buttonText}>Continue with Google</Text>
+        onPress={handleSignIn}
+        disabled={submitting}>
+        <Text style={styles.buttonText}>{submitting ? 'Signing in...' : 'Sign in'}</Text>
       </Pressable>
+
+      <Link href="/sign-up" style={styles.link}>
+        <Text accessibilityLabel="Go to sign up" style={styles.linkText}>
+          Don&apos;t have an account? Sign up
+        </Text>
+      </Link>
     </View>
   );
 }
@@ -55,6 +109,20 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textAlign: 'center',
   },
+  input: {
+    width: '100%',
+    minHeight: 44,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    fontSize: FontSizes.md,
+    color: Colors.text,
+  },
+  error: {
+    color: '#D64545',
+    fontSize: FontSizes.sm,
+    textAlign: 'center',
+  },
   button: {
     backgroundColor: Colors.accent,
     borderRadius: Radius.md,
@@ -64,11 +132,22 @@ const styles = StyleSheet.create({
     minWidth: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: Spacing.lg,
+    marginTop: Spacing.md,
+    width: '100%',
   },
   buttonText: {
     color: Colors.background,
     fontSize: FontSizes.md,
     fontWeight: '600',
+  },
+  link: {
+    marginTop: Spacing.sm,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  linkText: {
+    color: Colors.accent,
+    fontSize: FontSizes.sm,
+    textAlign: 'center',
   },
 });

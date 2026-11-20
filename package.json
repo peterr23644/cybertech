@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@clerk/backend": "3.31.2",
     "@clerk/expo": "^4.16.2",
     "@expo/ui": "~58.0.29",
+    "@neondatabase/serverless": "1.2.1",
+    "@prisma/adapter-neon": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "dotenv": "17.2.3",
     "expo": "~58.0.26",
     "expo-auth-session": "~58.0.19",
     "expo-constants": "~58.0.16",
@@ -20,7 +25,6 @@
     "expo-status-bar": "~58.0.5",
     "expo-symbols": "~58.0.5",
     "expo-system-ui": "~58.0.7",
-    "expo-web-browser": "~58.1.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
@@ -35,6 +39,7 @@
     "@types/react": "~19.3.0",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~58.0.4",
+    "prisma": "7.10.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -43,7 +48,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev"
   },
   "private": true
 }
