@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import Markdown from 'react-native-markdown-display';
 
 import { Colors, FontSizes, Radius, Spacing } from '@/theme';
 
@@ -15,7 +16,9 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
       entering={FadeInUp.duration(ANIMATION_DURATION)}
       style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
-        <Text style={[styles.text, isUser && styles.textUser]}>{message.text}</Text>
+        <Markdown style={isUser ? markdownStylesUser : markdownStylesAssistant}>
+          {message.text}
+        </Markdown>
       </View>
     </Animated.View>
   );
@@ -45,11 +48,38 @@ const styles = StyleSheet.create({
   bubbleAssistant: {
     backgroundColor: Colors.surface,
   },
-  text: {
-    fontSize: FontSizes.md,
-    color: Colors.text,
-  },
-  textUser: {
-    color: Colors.background,
-  },
 });
+
+function markdownTextStyles(color: string) {
+  return {
+    body: {
+      fontSize: FontSizes.md,
+      color,
+    },
+    paragraph: {
+      marginTop: 0,
+      marginBottom: 0,
+    },
+    strong: {
+      fontWeight: '700' as const,
+    },
+    bullet_list: {
+      marginVertical: Spacing.xs,
+    },
+    ordered_list: {
+      marginVertical: Spacing.xs,
+    },
+    list_item: {
+      marginVertical: 2,
+    },
+    code_inline: {
+      backgroundColor: `${color}22`,
+      borderRadius: Radius.sm,
+      paddingHorizontal: Spacing.xs,
+      color,
+    },
+  };
+}
+
+const markdownStylesAssistant = markdownTextStyles(Colors.text);
+const markdownStylesUser = markdownTextStyles(Colors.background);

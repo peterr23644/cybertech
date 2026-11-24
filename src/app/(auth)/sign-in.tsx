@@ -81,6 +81,12 @@ export default function SignInScreen() {
         <Text style={styles.buttonText}>{submitting ? 'Signing in...' : 'Sign in'}</Text>
       </Pressable>
 
+      <Link href="/forgot-password" style={styles.link}>
+        <Text accessibilityLabel="Go to forgot password" style={styles.linkText}>
+          Forgot password?
+        </Text>
+      </Link>
+
       <Link href="/sign-up" style={styles.link}>
         <Text accessibilityLabel="Go to sign up" style={styles.linkText}>
           Don&apos;t have an account? Sign up

@@ -1,10 +1,15 @@
-import { useRef, useState } from 'react';
+import { useAuth } from '@clerk/expo';
+import { router } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
 import { ChatInput } from '@/components/chat/chat-input';
 import { MessageList } from '@/components/chat/message-list';
+import { RetryBanner } from '@/components/chat/retry-banner';
 import type { ChatMessage } from '@/components/chat/types';
 import { Colors } from '@/theme';
+import { sendChatMessage } from '@/utils/chatApi';
+import { getSafetyResponse, hasSafetyConcern } from '@/utils/safetyCheck';
 
 const INITIAL_MESSAGES: ChatMessage[] = [
   {
@@ -14,14 +19,6 @@ const INITIAL_MESSAGES: ChatMessage[] = [
   },
 ];
 
-const FAKE_REPLIES = [
-  'Thanks for sharing that. Did it make you feel unsafe?',
-  'I hear you. Was this witnessed by others, or did it happen in private?',
-  "That sounds really hard. You're doing the right thing by talking about it.",
-];
-
-const REPLY_DELAY_MS = 1500;
-
 let messageCounter = 0;
 function nextId() {
   messageCounter += 1;
@@ -29,25 +26,72 @@ function nextId() {
 }
 
 export default function ChatScreen() {
+  const { getToken } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [draft, setDraft] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const replyIndexRef = useRef(0);
+  const [hasError, setHasError] = useState(false);
+  const [pendingHistory, setPendingHistory] = useState<ChatMessage[] | null>(null);
+  const [isStopped, setIsStopped] = useState(false);
+
+  const requestReply = useCallback(
+    async (history: ChatMessage[]) => {
+      setHasError(false);
+      setIsTyping(true);
+
+      const token = await getToken();
+      const result = await sendChatMessage(history, token);
+
+      setIsTyping(false);
+
+      if (!result.ok) {
+        setHasError(true);
+        setPendingHistory(history);
+        return;
+      }
+
+      if (result.done) {
+        setIsStopped(true);
+        router.push({
+          pathname: '/result',
+          params: { summary: result.summary, nextStep: result.nextStep },
+        });
+        return;
+      }
+
+      setMessages((previous) => [
+        ...previous,
+        { id: nextId(), role: 'assistant', text: result.reply },
+      ]);
+    },
+    [getToken],
+  );
 
   function handleSend() {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || isTyping || isStopped) return;
 
-    setMessages((previous) => [...previous, { id: nextId(), role: 'user', text }]);
     setDraft('');
-    setIsTyping(true);
+    const userMessage: ChatMessage = { id: nextId(), role: 'user', text };
 
-    setTimeout(() => {
-      const reply = FAKE_REPLIES[replyIndexRef.current % FAKE_REPLIES.length];
-      replyIndexRef.current += 1;
-      setIsTyping(false);
-      setMessages((previous) => [...previous, { id: nextId(), role: 'assistant', text: reply }]);
-    }, REPLY_DELAY_MS);
+    if (hasSafetyConcern(text)) {
+      setMessages((previous) => [
+        ...previous,
+        userMessage,
+        { id: nextId(), role: 'assistant', text: getSafetyResponse() },
+      ]);
+      setHasError(false);
+      setIsStopped(true);
+      return;
+    }
+
+    const history = [...messages, userMessage];
+    setMessages(history);
+    requestReply(history);
+  }
+
+  function handleRetry() {
+    if (pendingHistory) requestReply(pendingHistory);
   }
 
   return (
@@ -56,7 +100,13 @@ export default function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.container}>
         <MessageList messages={messages} isTyping={isTyping} />
-        <ChatInput value={draft} onChangeText={setDraft} onSend={handleSend} />
+        {hasError && <RetryBanner onRetry={handleRetry} />}
+        <ChatInput
+          value={draft}
+          onChangeText={setDraft}
+          onSend={handleSend}
+          disabled={isTyping || isStopped}
+        />
       </View>
     </KeyboardAvoidingView>
   );

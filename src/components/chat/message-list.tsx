@@ -40,6 +40,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
     paddingVertical: Spacing.md,
   },
 });
